@@ -2,6 +2,11 @@ port module Main exposing (Model, Msg(..), init, main, subscriptions, update, vi
 
 import Browser
 import Browser.Events
+import Canvas
+import Canvas.Settings as Canvas
+import Canvas.Settings.Text as Canvas
+import Canvas.Texture as Canvas
+import Color
 import Game.Resources
 import Game.TwoD
 import Game.TwoD.Camera
@@ -67,6 +72,9 @@ type alias Model =
 
     -- Zinggi's Game 2D library
     , resources : Game.Resources.Resources
+
+    -- joakin/elm-canvas
+    , canvasTexture : Maybe Canvas.Texture
     }
 
 
@@ -76,9 +84,12 @@ type Renderer
     | None -- 30,000
     | Zinggi -- 1000
     | DataAttrs -- 8000
+    | DataProp -- 8000
     | PixiJsDataAttrs -- 6000
+    | PixiJsDataProp -- 6000
     | PixiJsPorts -- 14,000
     | WebGLRenderer -- ???
+    | CanvasRenderer -- ???
 
 
 type alias Sprite =
@@ -100,6 +111,7 @@ type Msg
     | TextureLoaded Texture
     | TextureError
     | Resources Game.Resources.Msg
+    | CanvasTextureLoaded (Maybe Canvas.Texture)
 
 
 init : Flags -> ( Model, Cmd Msg )
@@ -120,6 +132,7 @@ init flags =
       , spriteLimit = Nothing
       , targetFps = 55
       , texture = Nothing
+      , canvasTexture = Nothing
       , resources = Game.Resources.init
       }
     , Cmd.batch
@@ -319,6 +332,9 @@ update msg model =
             -- TODO error?
             ( model, Cmd.none )
 
+        CanvasTextureLoaded texture ->
+            ( { model | canvasTexture = texture }, Cmd.none )
+
 
 spriteGenerator : Random.Generator Sprite
 spriteGenerator =
@@ -385,8 +401,15 @@ view model =
                         viewDataAttrs model.sprites
                             |> withWhiteBg
 
+                    DataProp ->
+                        viewDataProperty model.sprites
+                            |> withWhiteBg
+
                     PixiJsDataAttrs ->
                         viewPixiJsDataAttrs model.sprites
+
+                    PixiJsDataProp ->
+                        viewPixiJsDataProperty model.sprites
 
                     PixiJsPorts ->
                         []
@@ -400,6 +423,9 @@ view model =
                             Nothing ->
                                 [ Html.text "Loading texture..." ]
                                     |> withWhiteBg
+
+                    CanvasRenderer ->
+                        [ viewCanvas model.canvasTexture model.sprites ]
                 )
             , -- buttons
               Html.div
@@ -419,11 +445,17 @@ view model =
                    )
                  , ( "PixiJS"
                    , [ ( PixiJsDataAttrs, "PixiJS with data attrs" )
+                     , ( PixiJsDataAttrs, "PixiJS with data property" )
                      , ( PixiJsPorts, "PixiJS ports" )
+                     ]
+                   )
+                 , ( "Canvas 2d"
+                   , [ ( CanvasRenderer, "joakin/elm-canvas" )
                      ]
                    )
                  , ( "Misc (non-rendering)"
                    , [ ( DataAttrs, "Just data attrs" )
+                     , ( DataProp, "Just data property" )
                      , ( None, "None" )
                      ]
                    )
@@ -524,11 +556,25 @@ view model =
                                 , Html.text "This demonstrates how slow writing to the DOM is, even for non-visible changes."
                                 ]
 
+                            DataProp ->
+                                [ Html.text "This encodes the sprite data to a JSON value and sets it to the data property value of an HTML element."
+                                , Html.br [] []
+                                , Html.br [] []
+                                , Html.text "This demonstrates how slow writing to the DOM is, even for non-visible changes."
+                                ]
+
                             PixiJsDataAttrs ->
                                 [ Html.text "This encodes the sprite data to a JSON string and sets it to the data attribute value of an HTML element."
                                 , Html.br [] []
                                 , Html.br [] []
                                 , Html.text "On the Javascript side, we use PixiJS to read from that data attribute and draw to its own canvas."
+                                ]
+
+                            PixiJsDataProp ->
+                                [ Html.text "This encodes the sprite data to a JSON value and sets it to the data property value of an HTML element."
+                                , Html.br [] []
+                                , Html.br [] []
+                                , Html.text "On the Javascript side, we use PixiJS to read from that data property and draw to its own canvas."
                                 ]
 
                             PixiJsPorts ->
@@ -548,6 +594,12 @@ view model =
                                 [ Html.text "This just uses "
                                 , code "elm-explorations/webgl"
                                 , Html.text ". It's fast, but can be difficult to get up and started. There may be a way to make this much faster with sprite batching, but I'm not sure if that's possible at the moment."
+                                ]
+
+                            CanvasRenderer ->
+                                [ Html.text "This uses "
+                                , code "joakin/elm-canvas"
+                                , Html.text ". Uses the 2d canvas via a custom element passing encoded Json to it."
                                 ]
                         )
             ]
@@ -696,10 +748,30 @@ viewDataAttrs sprites =
     ]
 
 
+viewDataProperty : List Sprite -> List (Html Msg)
+viewDataProperty sprites =
+    [ Html.div
+        [ Html.Attributes.property "sprites" (encodeSprites sprites)
+        , Html.Attributes.id "sprite-data-prop-for-pixijs"
+        ]
+        []
+    ]
+
+
 viewPixiJsDataAttrs : List Sprite -> List (Html Msg)
 viewPixiJsDataAttrs sprites =
     [ Html.div
         [ Html.Attributes.attribute "data-sprites" (spritesToAttrVal sprites)
+        , Html.Attributes.id "sprite-data-for-pixijs"
+        ]
+        []
+    ]
+
+
+viewPixiJsDataProperty : List Sprite -> List (Html Msg)
+viewPixiJsDataProperty sprites =
+    [ Html.div
+        [ Html.Attributes.property "sprites" (encodeSprites sprites)
         , Html.Attributes.id "sprite-data-for-pixijs"
         ]
         []
@@ -838,3 +910,23 @@ squareMesh =
 px : Float -> String
 px num =
     String.fromFloat num ++ "px"
+
+
+viewCanvas : Maybe Canvas.Texture -> List Sprite -> Html Msg
+viewCanvas maybeTex sprites =
+    Canvas.toHtmlWith
+        { width = width, height = height, textures = [ Canvas.loadFromImageUrl "cat.png" CanvasTextureLoaded ] }
+        []
+        (Canvas.shapes [ Canvas.fill Color.white ] [ Canvas.rect ( 0, 0 ) width height ]
+            :: (case maybeTex of
+                    Just tex ->
+                        List.map
+                            (\sprite ->
+                                Canvas.texture [] ( sprite.x, sprite.y ) tex
+                            )
+                            sprites
+
+                    Nothing ->
+                        [ Canvas.text [ Canvas.align Canvas.Center ] ( width / 2, height / 2 ) "Loading" ]
+               )
+        )
