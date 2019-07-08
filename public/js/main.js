@@ -7617,6 +7617,7 @@ var author$project$Main$DataProp = 5;
 var author$project$Main$HtmlTransformTranslate = 1;
 var author$project$Main$None = 2;
 var author$project$Main$PixiJsDataAttrs = 6;
+var author$project$Main$PixiJsDataProp = 7;
 var author$project$Main$PixiJsPorts = 8;
 var author$project$Main$WebGLRenderer = 9;
 var author$project$Main$Zinggi = 3;
@@ -8644,7 +8645,7 @@ var author$project$Main$viewDataProperty = function (sprites) {
 					elm$html$Html$Attributes$property,
 					'sprites',
 					author$project$Main$encodeSprites(sprites)),
-					elm$html$Html$Attributes$id('sprite-data-prop-for-pixijs')
+					elm$html$Html$Attributes$id('sprite-data')
 				]),
 			_List_Nil)
 		]);
@@ -9661,7 +9662,7 @@ var author$project$Main$view = function (model) {
 										_List_fromArray(
 											[
 												_Utils_Tuple2(6, 'PixiJS with data attrs'),
-												_Utils_Tuple2(6, 'PixiJS with data property'),
+												_Utils_Tuple2(7, 'PixiJS with data property'),
 												_Utils_Tuple2(8, 'PixiJS ports')
 											])),
 										_Utils_Tuple2(

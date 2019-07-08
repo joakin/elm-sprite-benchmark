@@ -445,7 +445,7 @@ view model =
                    )
                  , ( "PixiJS"
                    , [ ( PixiJsDataAttrs, "PixiJS with data attrs" )
-                     , ( PixiJsDataAttrs, "PixiJS with data property" )
+                     , ( PixiJsDataProp, "PixiJS with data property" )
                      , ( PixiJsPorts, "PixiJS ports" )
                      ]
                    )
@@ -752,7 +752,7 @@ viewDataProperty : List Sprite -> List (Html Msg)
 viewDataProperty sprites =
     [ Html.div
         [ Html.Attributes.property "sprites" (encodeSprites sprites)
-        , Html.Attributes.id "sprite-data-prop-for-pixijs"
+        , Html.Attributes.id "sprite-data"
         ]
         []
     ]
