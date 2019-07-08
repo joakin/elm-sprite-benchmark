@@ -3,7 +3,8 @@
   <head>
     <title>GOTTA GO FAST</title>
     <style>
-      html, body {
+      html,
+      body {
         margin: 0;
         padding: 0;
         background: #ffffdf;
@@ -34,102 +35,116 @@
     <div id="stats"></div>
 
     <script src="./js/pixi.min.js"></script>
+    <script src="./js/elm-canvas-2.2.3.js"></script>
     <script src="./js/pixi-particles.js"></script>
     <script src="./js/main.js"></script>
     <script>
-        let app = Elm.Main.init({
-          node: document.getElementById('elm'),
-          flags: {
-            timestamp: Date.now(),
-          }
+      let app = Elm.Main.init({
+        node: document.getElementById("elm"),
+        flags: {
+          timestamp: Date.now()
+        }
+      });
+
+      // pixi stuff
+
+      let spritesContainer;
+      let spritePool = [];
+      let pixiInit = function() {
+        var app = new PIXI.Application({
+          width: 600,
+          height: 400,
+          backgroundColor: 0xffffff
         });
+        document.getElementById("pixi").appendChild(app.view);
 
-        // pixi stuff
+        // assuming 60,000 sprites is our limit
+        spritesContainer = new PIXI.particles.ParticleContainer(60000, {
+          //scale: true,
+          position: true,
+          //rotation: true,
+          //uvs: true,
+          alpha: true
+        });
+        app.stage.addChild(spritesContainer);
+      };
 
-        let spritesContainer;
-        let spritePool = [];
-        let pixiInit = function() {
-          var app = new PIXI.Application({
-            width: 600,
-            height: 400,
-            backgroundColor: 0xFFFFFF,
-          });
-          document.getElementById('pixi').appendChild(app.view);
+      let createSprite = function() {
+        var sprite = PIXI.Sprite.fromImage("cat.png");
+        sprite.anchor.set(0.5);
 
-          // assuming 60,000 sprites is our limit
-          spritesContainer = new PIXI.particles.ParticleContainer(60000, {
-            //scale: true,
-            position: true,
-            //rotation: true,
-            //uvs: true,
-            alpha: true
-          });
-          app.stage.addChild(spritesContainer);
+        return sprite;
+      };
+
+      let getSpriteInfo = function() {
+        let div = document.getElementById("sprite-data-for-pixijs");
+        if (div) {
+          if (div.sprites) return div.sprites;
+          else return JSON.parse(div.dataset.sprites);
+        } else {
+          return [];
         }
+      };
 
-        let createSprite = function() {
-          var sprite = PIXI.Sprite.fromImage('cat.png');
-          sprite.anchor.set(0.5);
+      let pixiUpdate = function() {
+        let sprites = getSpriteInfo();
 
-          return sprite;
-        }
-
-        let getSpriteInfo = function() {
-          let div =  document.getElementById("sprite-data-for-pixijs");
-          if (div) {
-            return JSON.parse(div.dataset.sprites);
-          } else {
-            return [];
-          }
-        }
-
-        let pixiUpdate = function() {
-          let sprites = getSpriteInfo();
-
-          if (sprites.length > 0) {
-            drawSprites(sprites);
-          }
-
-          requestAnimationFrame(pixiUpdate);
-        }
-
-        let drawSprites = function(sprites) {
-          //console.log(sprites.length);
-
-          // make/reuse sprites and animate
-          for (let i = 0; i < sprites.length; i++) {
-            let spriteData = sprites[i];
-            let sprite;
-            if (i < spritePool.length) {
-              sprite = spritePool[i];
-              spritePool[i].alpha = 1;
-            } else {
-              sprite = createSprite();
-              spritesContainer.addChild(sprite);
-              spritePool.push(sprite);
-            }
-            sprite.x = spriteData.x;
-            sprite.y = 400 - spriteData.y;
-          }
-
-          // destroy unused sprites
-          if (spritePool.length > sprites.length) {
-            for (let i = sprites.length; i < spritePool.length; i++) {
-              //spritePool[i].destroy();
-              spritePool[i].alpha = 0;
-            }
-            //spritePool.splice(sprites.length, spritePool.length - sprites.length);
-          }
-        }
-
-        pixiInit();
-        requestAnimationFrame(pixiUpdate);
-
-        app.ports.sendSprites.subscribe(function(sprites) {
+        if (sprites.length > 0) {
           drawSprites(sprites);
-        });
+        }
 
-        (function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.getElementById("stats").appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='//rawgit.com/mrdoob/stats.js/master/build/stats.min.js';document.head.appendChild(script);})()
+        requestAnimationFrame(pixiUpdate);
+      };
+
+      let drawSprites = function(sprites) {
+        //console.log(sprites.length);
+
+        // make/reuse sprites and animate
+        for (let i = 0; i < sprites.length; i++) {
+          let spriteData = sprites[i];
+          let sprite;
+          if (i < spritePool.length) {
+            sprite = spritePool[i];
+            spritePool[i].alpha = 1;
+          } else {
+            sprite = createSprite();
+            spritesContainer.addChild(sprite);
+            spritePool.push(sprite);
+          }
+          sprite.x = spriteData.x;
+          sprite.y = 400 - spriteData.y;
+        }
+
+        // destroy unused sprites
+        if (spritePool.length > sprites.length) {
+          for (let i = sprites.length; i < spritePool.length; i++) {
+            //spritePool[i].destroy();
+            spritePool[i].alpha = 0;
+          }
+          //spritePool.splice(sprites.length, spritePool.length - sprites.length);
+        }
+      };
+
+      pixiInit();
+      requestAnimationFrame(pixiUpdate);
+
+      app.ports.sendSprites.subscribe(function(sprites) {
+        drawSprites(sprites);
+      });
+
+      (function() {
+        var script = document.createElement("script");
+        script.onload = function() {
+          var stats = new Stats();
+          document.getElementById("stats").appendChild(stats.dom);
+          requestAnimationFrame(function loop() {
+            stats.update();
+            requestAnimationFrame(loop);
+          });
+        };
+        script.src = "//rawgit.com/mrdoob/stats.js/master/build/stats.min.js";
+        document.head.appendChild(script);
+      })();
     </script>
   </body>
 </html>
